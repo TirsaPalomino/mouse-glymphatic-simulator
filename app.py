@@ -1,40 +1,60 @@
 import streamlit as st
-import pandas as pd
-import numpy as np
-import time
+import plotly.graph_objects as go
 
 st.set_page_config(page_title="Simulador Glinfático y TREM2 en Roedores", layout="wide")
 
-st.title("🧠 Simulador del Sistema Glinfático y Dinámica Microglial (Zhao et al., 2023; Xie et al., 2013)")
+st.title("🧠 Simulador del Sistema Glinfático y Dinámica Microglial")
 st.markdown("""
-Esta herramienta interactiva modela dos descubrimientos clave de la neurociencia en roedores:
-1. **La expansión del espacio extracelular y el flujo glinfático** durante el sueño profundo (*Xie et al., 2013*).
-2. **La acumulación de beta-amiloide y daño lisosomal** bajo privación crónica de sueño evaluada en 6 grupos de ratones según el genotipo y la vía TREM2 (*Zhao et al., 2023*).
+*Basado en los estudios de Xie et al. (2013) y Zhao et al. (2023).* Esta herramienta modela la relación entre el ciclo de sueño, la biofísica del espacio intersticial y la respuesta inmunológica de la microglía (vía TREM2) en modelos de roedores.
 """)
 
-tab1, tab2 = st.tabs(["🔬 Fase 1: Biofísica del Sueño (Espacio Glinfático)", "🐀 Fase 2: Matriz Experimental por Grupos (Zhao et al., 2023)"])
+tab1, tab2 = st.tabs(["🔬 Fase 1: Simulación Biofísica (Espacio Glinfático)", "🐀 Fase 2: Matriz Experimental de Roedores (Zhao et al., 2023)"])
 
 with tab1:
-    st.header("Dinámica Celular: Vigilia vs. Sueño Profundo")
-    st.markdown("Basado en el estudio de imagen de dos fotones en ratones (*Xie et al., 2013*), el volumen del espacio intersticial se expande drásticamente durante el sueño para permitir el aclaramiento de toxinas.")
+    st.header("Dinámica del Espacio Intersticial: Vigilia vs. Sueño Profundo")
+    st.markdown("Utiliza el selector para observar cómo cambia el volumen del espacio extracelular (ISV) y la eficiencia del flujo de líquido cefalorraquídeo (LCR).")
     
-    estado_sueño = st.radio("Selecciona el estado del ratón:", ["Vigilia / Privación de Sueño", "Sueño Profundo (N3 / SWS)"])
+    estado_sueño = st.radio(
+        "Selecciona el estado fisiológico del ratón:", 
+        ["Vigilia / Privación de Sueño", "Sueño Profundo (N3 / SWS)"]
+    )
+    
+    col_a, col_b = st.columns([1, 1])
     
     if estado_sueño == "Vigilia / Privación de Sueño":
-        st.warning("⚠️ **Estado de Vigilia o Privación:** Las neuronas y astrocitos están expandidos. El espacio extracelular se reduce (~14-15%). La resistencia al flujo es alta y el líquido cefalorraquídeo (LCR) **no fluye eficientemente**.")
         volumen_isv = 15
-        eficiencia_flujo = "Muy Baja (Aclaramiento bloqueado)"
+        eficiencia = "Baja (Flujo bloqueado)"
+        descriction_text = "⚠️ **Estado de Vigilia:** Las neuronas y astrocitos están expandidos. El espacio extracelular se reduce a ~15%, impidiendo el barrido eficiente de toxinas."
+        color_grafica = "#ff4b4b"
     else:
-        st.success("✨ **Estado de Sueño Profundo:** Las células se contraen, expandiendo el espacio extracelular hasta un **~60%**. Los canales AQP4 en los astrocitos facilitan el paso masivo de LCR barriendo metabolitos de desecho.")
         volumen_isv = 60
-        eficiencia_flujo = "Máxima (Flujo advectivo activo)"
+        eficiencia = "Máxima (Flujo advectivo activo)"
+        descriction_text = "✨ **Sueño Profundo:** Las células se contraen, expandiendo el espacio extracelular hasta un 60%. Los canales AQP4 facilitan la limpieza masiva."
+        color_grafica = "#00cc96"
         
-    st.metric(label="Volumen Estimado del Espacio Intersticial (ISV)", value=f"{volumen_isv}%")
-    st.metric(label="Eficiencia del Aclaramiento Glinfático", value=eficiencia_flujo)
+    with col_a:
+        st.info(descriction_text)
+        st.metric(label="Volumen del Espacio Intersticial (ISV)", value=f"{volumen_isv}%")
+        st.metric(label="Eficiencia del Aclaramiento Glinfático", value=eficiencia)
+        
+    with col_b:
+        # Gráfica interactiva simulando el comportamiento del tejido con Plotly
+        fig = go.Figure(go.Bar(
+            x=['Espacio Intersticial (ISV)', 'Resistencia al Flujo', 'Aclaramiento de Toxinas'],
+            y=[volumen_isv, 100 - volumen_isv, volumen_isv * 1.5],
+            marker_color=[color_grafica, '#ffa15a', '#636efa']
+        ))
+        fig.update_layout(
+            title="Métricas Biofísicas del Tejido Cerebral",
+            yaxis_range=[0, 100],
+            template="plotly_white",
+            height=350
+        )
+        st.plotly_chart(fig, use_container_width=True)
 
 with tab2:
-    st.header("Simulación por Grupos de Ratones y Privación Crónica")
-    st.markdown("Selecciona las condiciones experimentales del estudio de Zhao et al. (2023) para observar el impacto en la acumulación de beta-amiloide y los lisosomas de la microglía.")
+    st.header("Panel de Control de Cohortes de Roedores")
+    st.markdown("Selecciona el grupo experimental y las semanas de privación de sueño para proyectar el daño celular y la acumulación de amiloide.")
     
     col1, col2 = st.columns(2)
     
@@ -44,27 +64,27 @@ with tab2:
             "Grupo 2: Alzheimer 5xFAD + Antena Defectuosa (R47H)",
             "Grupo 3: Alzheimer 5xFAD + Sin Antena (Knockout / TREM2-/-)",
             "Grupo 4: Sano (Wild-Type) + Antena Normal",
-            "Grupos 5 & 6: Sano (Wild-Type) + Antena Defectuosa o Sin Antena"
+            "Grupos 5 & 6: Sano (Wild-Type) + Antena Defectuosa/Knockout"
         ])
         
     with col2:
-        semanas_privacion = st.slider("Semanas de Privación de Sueño:", 1, 6, 6)
+        semanas_privacion = st.slider("Semanas de Privación Crónica de Sueño:", 1, 6, 6)
         
-    if st.button("Ejecutar Simulación del Grupo"):
-        st.subheader("📊 Resultados Histológicos y Moleculares Obtenidos:")
-        
-        if "Grupo 1" in grupo_raton:
-            st.error("🚨 **Resultado Crítico (Grupo 1):** Las placas de Beta-amiloide **se duplicaron (~200%)**. Los lisosomas (estómagos celulares) de la microglía colapsaron y se deformaron severamente debido al sobreesfuerzo energético inducido por la falta de descanso.")
-            st.markdown("**Explicación:** La privación crónica genera un colapso energético; la 'antena' (TREM2) detecta la alerta y fuerza a la célula a sobretrabajar, agotando su capacidad y disparando el amiloide.")
-        elif "Grupo 2" in grupo_raton:
-            st.info("⚠️ **Resultado del Grupo 2 (Mutación R47H):** No se acumuló basura extra de forma acelerada a pesar de la privación de sueño.")
-            st.markdown("**Explicación:** Al tener una antena defectuosa, las células microgliales se vuelven 'ciegas' y pierden su función fagocítica. Aunque no hay un colapso inmediato, la basura toxica se acumula silenciosamente año tras año sin que la célula responda.")
-        elif "Grupo 3" in grupo_raton:
-            st.info("⚠️ **Resultado del Grupo 3 (Knockout / Sin TREM2):** La privación de sueño no incrementó de manera extrema los depósitos en comparación con el Grupo 1.")
-            st.markdown("**Explicación:** Demuestra que para que la privación de sueño active el daño destructivo en el modelo de Alzheimer, la microglía requiere estrictamente de la señalización funcional de TREM2.")
-        elif "Grupo 4" in grupo_raton:
-            st.warning("⚠️ **Resultado del Grupo 4 (Sano con Antena Normal):** Se observó daño celular directo: los lisosomas se hincharon, deformaron y perdieron sus enzimas digestivas.")
-            st.markdown("**Explicación:** No se necesita tener Alzheimer; la privación crónica de sueño por sí sola hace que los 'estómagos celulares' de un cerebro sano fallen por completo.")
-        else:
-            st.success("✅ **Resultado Grupos 5 & 6 (Sano sin/con defecto en TREM2):** Las células de limpieza se mantuvieron protegidas contra el colapso inducido por la falta de sueño.")
-            st.markdown("**Explicación:** Confirma que TREM2 actúa como el enlace molecular crítico que conecta la falta de descanso con el estrés celular y lisosomal.")
+    st.markdown("---")
+    
+    # Visualización estilo tarjetas de resultados según el grupo
+    if "Grupo 1" in grupo_raton:
+        st.error(f"🚨 **[GRUPO 1] Resultado tras {semanas_privacion} semanas:** Carga de Beta-amiloide **duplicada (~200%)**. Colapso severo de los lisosomas microgliales.")
+        st.markdown("**Análisis Mecanístico:** El estrés energético provocado por la falta de sueño activa la señal TREM2, forzando a la microglía a un sobretrabajo que colapsa su capacidad digestiva y acelera las placas.")
+    elif "Grupo 2" in grupo_raton:
+        st.warning(f"⚠️ **[GRUPO 2] Resultado tras {semanas_privacion} semanas:** Ausencia de picos agudos de amiloide, pero acumulación silenciosa a largo plazo.")
+        st.markdown("**Análisis Mecanístico:** La mutación R47H deja 'ciega' a la antena TREM2. La célula no colapsa por sobreesfuerzo, pero pierde por completo su función de limpieza.")
+    elif "Grupo 3" in grupo_raton:
+        st.warning(f"⚠️ **[GRUPO 3] Resultado tras {semanas_privacion} semanas:** Incremento moderado/limitado de depósitos amiloides en comparación con el Grupo 1.")
+        st.markdown("**Análisis Mecanístico:** Confirma que la vía TREM2 es estrictamente necesaria para que la privación de sueño desencadene la respuesta destructiva típica del Alzheimer.")
+    elif "Grupo 4" in grupo_raton:
+        st.error(f"⚠️ **[GRUPO 4] Resultado tras {semanas_privacion} semanas:** Lisosomas hinchados, deformes y pérdida de enzimas digestivas en cerebros sanos.")
+        st.markdown("**Análisis Mecanístico:** Demuestra que el daño lisosomal y el estrés celular no son exclusivos del Alzheimer; la privación crónica de sueño por sí sola destruye el sistema de limpieza.")
+    else:
+        st.success(f"✅ **[GRUPOS 5 & 6] Resultado tras {semanas_privacion} semanas:** Células microgliales protegidas frente al colapso inducido por la falta de descanso.")
+        st.markdown("**Análisis Mecanístico:** La ausencia o alteración completa de la vía TREM2 aísla a la célula de la cascada de estrés inflamatorio dependiente del sueño.")
